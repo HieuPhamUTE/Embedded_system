@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>System Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        table { width: 80%; margin: auto; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        canvas { width: 80%; max-width: 600px; margin: 20px auto; }
+    </style>
+    <script>
+        let timeLabels = [], temperatureData = [], cpuLoadData = [];
+        let temperatureChart, cpuLoadChart;
+
+        function fetchData() {
+            fetch("get_data.php")
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    updateCharts(data[0]); // Cập nhật biểu đồ với dữ liệu mới nhất
+                    updateTable(data); // Cập nhật bảng với dữ liệu đầy đủ
+                }
+            })
+            .catch(error => console.error("Lỗi:", error));
+        }
+
+        function updateCharts(latestData) {
+            let currentTime = new Date().toLocaleTimeString();
+
+            if (timeLabels.length >= 20) {
+                timeLabels.shift();
+                temperatureData.shift();
+                cpuLoadData.shift();
+            }
+            timeLabels.push(currentTime);
+            temperatureData.push(latestData.temperature);
+            cpuLoadData.push(latestData.cpu_load);
+
+            temperatureChart.data.labels = timeLabels;
+            temperatureChart.data.datasets[0].data = temperatureData;
+            temperatureChart.update();
+
+            cpuLoadChart.data.labels = timeLabels;
+            cpuLoadChart.data.datasets[0].data = cpuLoadData;
+            cpuLoadChart.update();
+        }
+
+        function updateTable(data) {
+            let tableBody = document.getElementById("data-table-body");
+            tableBody.innerHTML = ""; // Xóa dữ liệu cũ
+
+            data.forEach(row => {
+                let tr = `<tr>
+                    <td>${row.id}</td>
+                    <td>${row.temperature} °C</td>
+                    <td>${row.fan_speed} RPM</td>
+                    <td>${row.ram_used} MB</td>
+                    <td>${row.ram_free} MB</td>
+                    <td>${row.disk_used} GB</td>
+                    <td>${row.disk_free} GB</td>
+                    <td>${row.cpu_load} %</td>
+                    <td>${row.ip_address}</td>
+                    <td>${row.uptime}</td>
+                    <td>${row.os_info}</td>
+                    <td>${row.received_at}</td>
+                </tr>`;
+                tableBody.innerHTML += tr;
+            });
+        }
+
+        window.onload = function() {
+            const ctx1 = document.getElementById("temperatureChart").getContext("2d");
+            temperatureChart = new Chart(ctx1, {
+                type: "line",
+                data: { labels: timeLabels, datasets: [{ label: "Temperature (°C)", borderColor: "red", fill: false, data: temperatureData }] },
+                options: { responsive: true }
+            });
+
+            const ctx2 = document.getElementById("cpuLoadChart").getContext("2d");
+            cpuLoadChart = new Chart(ctx2, {
+                type: "line",
+                data: { labels: timeLabels, datasets: [{ label: "CPU Load (%)", borderColor: "blue", fill: false, data: cpuLoadData }] },
+                options: { responsive: true }
+            });
+
+            setInterval(fetchData, 2000); // Cập nhật mỗi 2 giây
+        };
+    </script>
+</head>
+<body>
+    <h2>📊 Hệ thống giám sát thời gian thực</h2>
+
+    <canvas id="temperatureChart"></canvas>
+    <canvas id="cpuLoadChart"></canvas>
+
+    <h3>📋 Dữ liệu chi tiết</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nhiệt độ</th>
+                <th>Tốc độ quạt</th>
+                <th>RAM đã dùng</th>
+                <th>RAM còn trống</th>
+                <th>Ổ cứng đã dùng</th>
+                <th>Ổ cứng còn trống</th>
+                <th>Tải CPU</th>
+                <th>IP</th>
+                <th>Thời gian hoạt động</th>
+                <th>Hệ điều hành</th>
+                <th>Thời gian nhận</th>
+            </tr>
+        </thead>
+        <tbody id="data-table-body"></tbody>
+    </table>
+</body>
+</html>
+
